@@ -1,0 +1,41 @@
+#!/bin/sh
+# newcpp <name> -- instantiate the C++ project template
+
+set -e
+
+template="$HOME/dotfiles/templates/cpp"
+name="$1"
+dest="$PWD/$1"
+
+case "$name" in
+    "") echo "usage: newcpp <name>" >&2; exit 1 ;;
+    *[!A-Za-z0-9_-]*)
+        echo "newcpp: invalid name '$name' (allowed: A-Za-z0-9_-)" >&2
+        exit 1 ;;
+esac
+
+if [ ! -d "$template" ]; then
+    echo "newcpp: template not found: $template" >&2
+    exit 1
+fi
+if [ -e "$dest" ]; then
+    echo "newcpp: '$name' already exists" >&2
+    exit 1
+fi
+
+cp -r "$template" "$dest"
+rm -rf "$dest/obj" "$dest/.cache" "$dest/.git" "$dest/compile_commands.json"
+
+find "$dest" -type f -exec sed -i.bak "s/{{PROJECT}}/$name/g" {} +
+find "$dest" -name '*.bak' -delete
+
+if grep -rqF '{{PROJECT}}' "$dest"; then
+    echo "newcpp: warning, unsubstituted {{PROJECT}} markers remain" >&2
+fi
+
+git -C "$dest" init -q
+git -C "$dest" add -A
+git -C "$dest" commit -qm "init: $name skeleton"
+
+echo "$dest"
+
